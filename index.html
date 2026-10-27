@@ -119,6 +119,52 @@ td.neg { color: var(--bad); }
 .note { font-size: 12px; color: var(--muted); }
 .hidden { display: none !important; }
 .inline { display: flex; gap: 8px; align-items: center; }
+
+/* ===== compact + accordion ===== */
+body { font-size: 14px; }
+header { padding: 12px 16px 4px; }
+h1 { font-size: 19px; }
+main { padding: 6px 16px 24px; }
+.layout { grid-template-columns: 300px 1fr; gap: 12px; }
+.layout.collapsed { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } #form { position: static; max-height: none; } }
+.layout.collapsed #form { display: none; }
+.stack { gap: 10px; }
+.card { padding: 12px; border-radius: 10px; }
+.card.compact { padding: 8px 10px; }
+#form { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; padding: 10px 12px; }
+.formhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.formhead h2 { margin: 0; font-size: 15px; }
+label { margin-bottom: 6px; font-size: 12px; }
+input, select { padding: 4px 7px; }
+.acc { border-top: 1px solid var(--border); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::before { content: '▸'; color: var(--muted); font-size: 11px; transition: transform .15s; }
+.acc[open] > summary::before { transform: rotate(90deg); }
+.acc > summary .t { font-weight: 600; font-size: 13px; }
+.acc > summary .sv { margin-left: auto; font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62%; }
+.acc[open] > summary .sv { display: none; }
+.acc > summary { flex-wrap: wrap; }
+.acc > summary .t { white-space: nowrap; }
+.acc-body { padding-bottom: 6px; }
+.acc.big { border-top: 1px solid var(--border); }
+.acc.big > summary { padding: 0; }
+.acc.big[open] > summary { margin-bottom: 8px; }
+.acc.big > summary .t { font-size: 15px; }
+.acc.big > summary .tabs { margin-left: auto; }
+.acc.big:not([open]) > summary .tabs { display: none; }
+.acc.big .charts { gap: 12px; }
+.acc.big .charts .card { padding: 4px; border: 0; }
+.chartbox { height: 220px; }
+.kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpi .v { font-size: 17px; }
+.kpi .n { font-size: 11px; }
+.sc { padding: 10px; }
+.sc .big { font-size: 21px; }
+.sc .def { margin-bottom: 4px; }
+th, td { padding: 4px 8px; }
 </style>
 </head>
 <body>
@@ -127,27 +173,31 @@ td.neg { color: var(--bad); }
     <h1>Motor Package Simulator</h1>
     <p class="sub">จำลองจุดคุ้มทุนและยอดขาย 3 ปีของแพ็กเกจประกันรถยนต์ภาคสมัครใจ</p>
   </div>
+  <div class="inline"><button type="button" class="btn" id="showForm" style="display:none">⇥ แสดงฟอร์ม</button>
   <nav class="tabs" role="tablist">
     <button role="tab" aria-selected="true" data-tab="sim">จำลอง</button>
     <button role="tab" aria-selected="false" data-tab="data">ฐานข้อมูล</button>
-  </nav>
+  </nav></div>
 </header>
 <main>
 <section id="tab-sim">
   <div class="layout">
     <form class="card" id="form" autocomplete="off" onsubmit="return false">
-      <h2>ข้อมูลแพ็กเกจ</h2>
-      <fieldset>
-        <legend>แพ็กเกจและรถ</legend>
+      <div class="formhead"><h2>ข้อมูลแพ็กเกจ</h2><button type="button" class="btn icon" id="hideForm" title="ซ่อนฟอร์ม">⇤</button></div>
+      <details class="acc" open>
+        <summary><span class="t">แพ็กเกจและรถ</span><span class="sv" id="sv-pkg"></span></summary>
+        <div class="acc-body">
         <label>ประเภทประกันภัย<select id="category"></select></label>
         <div class="row2">
           <label>ยี่ห้อ<select id="brand"></select></label>
           <label>รุ่น<select id="model"></select></label>
         </div>
         <label>ราคาเบี้ยต่อกรมธรรม์ (บาท) <span class="hint">รวมอากรและ VAT</span><input type="number" id="gross" min="0" step="100"></label>
-      </fieldset>
-      <fieldset>
-        <legend>Loss</legend>
+        </div>
+      </details>
+      <details class="acc" open>
+        <summary><span class="t">Loss</span><span class="sv" id="sv-loss"></span></summary>
+        <div class="acc-body">
         <div class="seg">
           <label><input type="radio" name="lossMode" value="lr">ใส่ LR%</label>
           <label><input type="radio" name="lossMode" value="fs">Frequency × Severity</label>
@@ -157,9 +207,11 @@ td.neg { color: var(--bad); }
           <label>Frequency <span class="hint">ครั้ง/คัน/ปี</span><input type="number" id="freq" min="0" step="0.01"></label>
           <label>Severity <span class="hint">บาท/ครั้ง</span><input type="number" id="sev" min="0" step="500"></label>
         </div>
-      </fieldset>
-      <fieldset>
-        <legend>ต้นทุน</legend>
+        </div>
+      </details>
+      <details class="acc">
+        <summary><span class="t">ต้นทุน</span><span class="sv" id="sv-cost"></span></summary>
+        <div class="acc-body">
         <label>Commission (% เบี้ยสุทธิ)<input type="number" id="comm" min="0" step="0.5"></label>
         <div class="note" style="margin:-2px 0 6px">OPEX</div>
         <div class="row3">
@@ -173,9 +225,11 @@ td.neg { color: var(--bad); }
           <label>บาท/กธ.<input type="number" id="mktPerPolicy" min="0" step="10"></label>
           <label>Fixed บาท/ปี<input type="number" id="mktFixed" min="0" step="100000"></label>
         </div>
-      </fieldset>
-      <fieldset>
-        <legend>สมมติฐาน 3 ปี</legend>
+        </div>
+      </details>
+      <details class="acc">
+        <summary><span class="t">สมมติฐาน 3 ปี</span><span class="sv" id="sv-assume"></span></summary>
+        <div class="acc-body">
         <div class="row2">
           <label>Growth ยอดขายใหม่ (%/ปี)<input type="number" id="growth" step="1"></label>
           <label>Retention (%)<input type="number" id="retention" min="0" max="100" step="1"></label>
@@ -185,7 +239,8 @@ td.neg { color: var(--bad); }
           <label>เตือนเมื่อ LR ดีกว่าตลาดเกิน (pts)<input type="number" id="warnPts" min="0" step="1"></label>
           <label>เตือนแรงเมื่อเกิน (pts)<input type="number" id="alertPts" min="0" step="1"></label>
         </div>
-      </fieldset>
+        </div>
+      </details>
       <button type="button" class="btn" id="resetInputs">คืนค่าตัวอย่าง</button>
     </form>
 
@@ -197,17 +252,16 @@ td.neg { color: var(--bad); }
         <div id="bench"></div>
       </div>
       <div class="card">
-        <h2>ต้องขายกรมธรรม์ใหม่ปีแรกเท่าไร</h2>
+        
         <div class="scen" id="scen"></div>
-        <p class="note" style="margin:10px 0 0">คิดบน Earned Premium: ขายเฉลี่ยทั้งปี ปีที่ขายรับรู้เบี้ย 50% ปีถัดไปอีก 50% · ยอดขายใหม่โตตาม Growth และต่ออายุตาม Retention · Gross ก่อน Reinsurance</p>
+        <p class="note" style="margin:8px 0 0">คิดบน Earned Premium: ขายเฉลี่ยทั้งปี ปีที่ขายรับรู้เบี้ย 50% ปีถัดไปอีก 50% · ยอดขายใหม่โตตาม Growth และต่ออายุตาม Retention · Gross ก่อน Reinsurance</p>
       </div>
-      <div class="card">
-        <div class="inline" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
-          <h2 style="margin:0">ตารางจำลอง 3 ปี</h2>
-          <nav class="tabs" id="scenTabs"></nav>
-        </div>
+      <details class="card acc big" open>
+        <summary><span class="t">ตารางจำลอง 3 ปี</span><nav class="tabs" id="scenTabs" onclick="event.preventDefault()"></nav></summary>
         <div class="tablewrap" id="simTable"></div>
-      </div>
+      </details>
+      <details class="card acc big">
+        <summary><span class="t">กราฟกำไรสะสม และ Combined Ratio</span><span class="sv">กดเพื่อเปิด</span></summary>
       <div class="charts">
         <div class="card">
           <h2>กำไรสะสม (ล้านบาท)</h2>
@@ -220,6 +274,7 @@ td.neg { color: var(--bad); }
           <div class="chartbox"><canvas id="chCR" aria-label="กราฟ Combined Ratio รายปี แยกตาม scenario" role="img"></canvas></div>
         </div>
       </div>
+      </details>
     </div>
   </div>
 </section>
@@ -468,8 +523,19 @@ function engineInputs() {
   return e;
 }
 
+// ---------- Accordion summaries ----------
+function renderSummaries() {
+  const f = (n) => fmt(n / 1e6, 1) + 'M';
+  const cat = CATEGORIES.find((c) => c.id === inputs.category)?.name || '';
+  $('sv-pkg').textContent = `${cat} · ${inputs.brand} ${inputs.model} · ${fmt(inputs.gross)} บ.`;
+  $('sv-loss').textContent = inputs.lossMode === 'lr' ? `LR ${inputs.lr}%` : `${inputs.freq} × ${fmt(inputs.sev)} บ.`;
+  $('sv-cost').textContent = `Comm ${inputs.comm}% · OPEX ${inputs.opexVar}% + ${f(inputs.opexFixed)} · MKT ${inputs.mktVar}% + ${f(inputs.mktFixed)}`;
+  $('sv-assume').textContent = `Growth ${inputs.growth}% · Ret ${inputs.retention}% · CR ${inputs.targetCR}%`;
+}
+
 // ---------- Render ----------
 function render() {
+  renderSummaries();
   $('lossLR').classList.toggle('hidden', inputs.lossMode !== 'lr');
   $('lossFS').classList.toggle('hidden', inputs.lossMode !== 'fs');
   const e = engineInputs();
@@ -549,7 +615,7 @@ function renderScenarios(r) {
 
 let chCum, chCR;
 function renderCharts(r) {
-  if (typeof Chart === 'undefined') { ['chCum', 'chCR'].forEach((id) => { $(id).parentElement.innerHTML = '<p class="note">โหลดไลบรารีกราฟไม่ได้ (ต้องต่ออินเทอร์เน็ต) ดูตัวเลขในตารางด้านล่างแทน</p>'; }); return; }
+  if (typeof Chart === 'undefined') { ['chCum', 'chCR'].forEach((id) => { const c = $(id); if (c) c.parentElement.innerHTML = '<p class="note">โหลดไลบรารีกราฟไม่ได้ (ต้องต่ออินเทอร์เน็ต) ดูตัวเลขในตารางแทน</p>'; }); return; }
   const text2 = css('--text-2'), grid = css('--grid'), surface = css('--surface');
   const live = SCEN.filter((s) => r[s.key].feasible);
   const legend = live.map((s) => `<span><i class="dot" style="--c:var(${s.color})"></i>${s.name}</span>`).join('');
@@ -762,6 +828,9 @@ function init() {
   $('importJson').addEventListener('change', (ev) => { const f = ev.target.files[0]; if (f) importJson(f); ev.target.value = ''; });
   $('resetDb').addEventListener('click', () => { if (!confirm('คืนค่าฐานข้อมูลเป็นค่าเริ่มต้น? ข้อมูลที่แก้ไว้จะหายทั้งหมด')) return; db = clone(DEFAULT_DB); saveDb(); renderDb(); showMsg('คืนค่าเริ่มต้นแล้ว'); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => lastResult && renderCharts(lastResult));
+  $('hideForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.add('collapsed'); $('showForm').style.display = ''; render(); });
+  $('showForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.remove('collapsed'); $('showForm').style.display = 'none'; render(); });
+  document.querySelectorAll('details.acc.big').forEach((d) => d.addEventListener('toggle', () => d.open && lastResult && renderCharts(lastResult)));
   render();
 }
 init();
