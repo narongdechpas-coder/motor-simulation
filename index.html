@@ -4,9 +4,248 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Motor Package Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f3ef; --surface: #fcfcfb; --surface-2: #f0efea; --border: #dddbd3;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #7a7974;
+  --accent: #2a78d6; --accent-ink: #ffffff;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --ok: #1f7a3a; --ok-bg: #e5f3e8; --warn: #8a5a00; --warn-bg: #fdf1d6; --bad: #b42318; --bad-bg: #fde6e4;
+  --grid: #e6e4dd;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #34332f;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
+    --accent: #3987e5; --accent-ink: #ffffff;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
+    --grid: #2b2a27;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #34332f;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
+  --accent: #3987e5; --accent-ink: #ffffff;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
+  --grid: #2b2a27;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "IBM Plex Sans Thai", system-ui, sans-serif; }
+header { padding: 20px 16px 8px; max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+h3 { font-size: 14px; margin: 16px 0 8px; color: var(--text-2); }
+.sub { color: var(--text-2); font-size: 13px; margin: 2px 0 0; }
+nav.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; }
+nav.tabs button { border: 0; background: transparent; color: var(--text-2); padding: 6px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+nav.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; }
+.layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+fieldset { border: 0; padding: 0; margin: 0 0 4px; }
+legend { font-weight: 600; font-size: 13px; color: var(--text-2); margin: 12px 0 6px; padding: 0; }
+label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+label > span.hint { color: var(--muted); font-size: 12px; }
+input, select { width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin-top: 2px; }
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.seg { display: flex; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 8px; margin-bottom: 8px; }
+.seg label { flex: 1; margin: 0; text-align: center; padding: 4px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.seg input { display: none; }
+.seg label:has(input:checked) { background: var(--surface); color: var(--text); font-weight: 600; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi .k { font-size: 12px; color: var(--text-2); }
+.kpi .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .n { font-size: 12px; color: var(--muted); }
+.bench { border-radius: 10px; padding: 12px 14px; }
+.bench.ok { background: var(--ok-bg); } .bench.warn { background: var(--warn-bg); } .bench.alert { background: var(--bad-bg); } .bench.none { background: var(--surface-2); }
+.bench .title { font-weight: 600; }
+.bench.ok .title { color: var(--ok); } .bench.warn .title { color: var(--warn); } .bench.alert .title { color: var(--bad); }
+.bar { position: relative; height: 10px; background: var(--grid); border-radius: 5px; margin: 26px 0 26px; }
+.bar .mk { position: absolute; top: -4px; width: 3px; height: 18px; border-radius: 2px; background: var(--text); }
+.bar .mk.ind { background: var(--muted); }
+.bar .lbl { position: absolute; font-size: 12px; white-space: nowrap; transform: translateX(-50%); }
+.bar .lbl.top { top: -22px; } .bar .lbl.bot { top: 16px; color: var(--text-2); }
+.src { font-size: 12px; color: var(--text-2); }
+.scen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 700px) { .scen { grid-template-columns: 1fr; } }
+.sc { border: 1px solid var(--border); border-radius: 10px; padding: 12px; border-top: 4px solid var(--c); }
+.sc .name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.sc .def { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.sc .big { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sc .line { font-size: 13px; color: var(--text-2); display: flex; justify-content: space-between; gap: 8px; }
+.sc .line b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+.sc.na .big { font-size: 15px; color: var(--bad); font-weight: 600; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); display: inline-block; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 1000px) { .charts { grid-template-columns: 1fr; } }
+.chartbox { position: relative; height: 260px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--text-2); font-weight: 600; }
+tr.sum td { font-weight: 600; }
+td.neg { color: var(--bad); }
+.btn { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--bad); }
+.btn.icon { padding: 2px 8px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.msg { font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: none; }
+.msg.show { display: block; } .msg.ok { background: var(--ok-bg); color: var(--ok); } .msg.err { background: var(--bad-bg); color: var(--bad); }
+.edit td { padding: 3px 4px; } .edit input, .edit select { margin: 0; padding: 4px 6px; font-size: 13px; min-width: 70px; }
+.note { font-size: 12px; color: var(--muted); }
+.hidden { display: none !important; }
+.inline { display: flex; gap: 8px; align-items: center; }
+</style>
 </head>
 <body>
-<p>UI อยู่ระหว่างพัฒนา (ขั้นที่ 3)</p>
+<header>
+  <div>
+    <h1>Motor Package Simulator</h1>
+    <p class="sub">จำลองจุดคุ้มทุนและยอดขาย 3 ปีของแพ็กเกจประกันรถยนต์ภาคสมัครใจ</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="sim">จำลอง</button>
+    <button role="tab" aria-selected="false" data-tab="data">ฐานข้อมูล</button>
+  </nav>
+</header>
+<main>
+<section id="tab-sim">
+  <div class="layout">
+    <form class="card" id="form" autocomplete="off" onsubmit="return false">
+      <h2>ข้อมูลแพ็กเกจ</h2>
+      <fieldset>
+        <legend>แพ็กเกจและรถ</legend>
+        <label>ประเภทประกันภัย<select id="category"></select></label>
+        <div class="row2">
+          <label>ยี่ห้อ<select id="brand"></select></label>
+          <label>รุ่น<select id="model"></select></label>
+        </div>
+        <label>ราคาเบี้ยต่อกรมธรรม์ (บาท) <span class="hint">รวมอากรและ VAT</span><input type="number" id="gross" min="0" step="100"></label>
+      </fieldset>
+      <fieldset>
+        <legend>Loss</legend>
+        <div class="seg">
+          <label><input type="radio" name="lossMode" value="lr">ใส่ LR%</label>
+          <label><input type="radio" name="lossMode" value="fs">Frequency × Severity</label>
+        </div>
+        <div id="lossLR"><label>Loss Ratio (%)<input type="number" id="lr" min="0" step="0.5"></label></div>
+        <div id="lossFS" class="row2">
+          <label>Frequency <span class="hint">ครั้ง/คัน/ปี</span><input type="number" id="freq" min="0" step="0.01"></label>
+          <label>Severity <span class="hint">บาท/ครั้ง</span><input type="number" id="sev" min="0" step="500"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>ต้นทุน</legend>
+        <label>Commission (% เบี้ยสุทธิ)<input type="number" id="comm" min="0" step="0.5"></label>
+        <div class="note" style="margin:-2px 0 6px">OPEX</div>
+        <div class="row3">
+          <label>% เบี้ย<input type="number" id="opexVar" min="0" step="0.5"></label>
+          <label>บาท/กธ.<input type="number" id="opexPerPolicy" min="0" step="10"></label>
+          <label>Fixed บาท/ปี<input type="number" id="opexFixed" min="0" step="100000"></label>
+        </div>
+        <div class="note" style="margin:-2px 0 6px">Marketing Expense</div>
+        <div class="row3">
+          <label>% เบี้ย<input type="number" id="mktVar" min="0" step="0.5"></label>
+          <label>บาท/กธ.<input type="number" id="mktPerPolicy" min="0" step="10"></label>
+          <label>Fixed บาท/ปี<input type="number" id="mktFixed" min="0" step="100000"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>สมมติฐาน 3 ปี</legend>
+        <div class="row2">
+          <label>Growth ยอดขายใหม่ (%/ปี)<input type="number" id="growth" step="1"></label>
+          <label>Retention (%)<input type="number" id="retention" min="0" max="100" step="1"></label>
+        </div>
+        <label>CR เป้าหมาย Best Case (%) <span class="hint">กำไร = 100 − CR</span><input type="number" id="targetCR" min="1" max="100" step="0.5"></label>
+        <div class="row2">
+          <label>เตือนเมื่อ LR ดีกว่าตลาดเกิน (pts)<input type="number" id="warnPts" min="0" step="1"></label>
+          <label>เตือนแรงเมื่อเกิน (pts)<input type="number" id="alertPts" min="0" step="1"></label>
+        </div>
+      </fieldset>
+      <button type="button" class="btn" id="resetInputs">คืนค่าตัวอย่าง</button>
+    </form>
+
+    <div class="stack">
+      <div class="card">
+        <div class="kpis" id="kpis"></div>
+      </div>
+      <div class="card">
+        <h2>เทียบ Loss Ratio กับ Industry</h2>
+        <div id="bench"></div>
+      </div>
+      <div class="card">
+        <h2>ต้องขายกรมธรรม์ใหม่ปีแรกเท่าไร</h2>
+        <div class="scen" id="scen"></div>
+        <p class="note" style="margin:10px 0 0">คิดบน Earned Premium: ขายเฉลี่ยทั้งปี ปีที่ขายรับรู้เบี้ย 50% ปีถัดไปอีก 50% · ยอดขายใหม่โตตาม Growth และต่ออายุตาม Retention · Gross ก่อน Reinsurance</p>
+      </div>
+      <div class="charts">
+        <div class="card">
+          <h2>กำไรสะสม (ล้านบาท)</h2>
+          <div class="legend" id="lg1"></div>
+          <div class="chartbox"><canvas id="chCum" aria-label="กราฟกำไรสะสม 3 ปี แยกตาม scenario" role="img"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Combined Ratio รายปี (%)</h2>
+          <div class="legend" id="lg2"></div>
+          <div class="chartbox"><canvas id="chCR" aria-label="กราฟ Combined Ratio รายปี แยกตาม scenario" role="img"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="inline" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">
+          <h2 style="margin:0">ตารางจำลอง 3 ปี</h2>
+          <nav class="tabs" id="scenTabs"></nav>
+        </div>
+        <div class="tablewrap" id="simTable"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-data" class="hidden">
+  <div class="card" style="margin-bottom:16px">
+    <h2>Import / Export</h2>
+    <div class="msg" id="dataMsg"></div>
+    <div class="toolbar">
+      <button class="btn primary" id="exportXlsx">Export Template (Excel)</button>
+      <button class="btn" id="importXlsxBtn">Import Excel</button>
+      <input type="file" id="importXlsx" accept=".xlsx,.xls" class="hidden">
+      <button class="btn" id="exportJson">Export JSON (สำรองทั้งหมด)</button>
+      <button class="btn" id="importJsonBtn">Import JSON</button>
+      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+      <button class="btn danger" id="resetDb">คืนค่าเริ่มต้น</button>
+    </div>
+    <p class="note" style="margin:0">ข้อมูลเก็บไว้ใน browser เครื่องนี้เท่านั้น ถ้าจะย้ายเครื่องหรือแชร์ให้ใช้ Export JSON · Template Excel ส่งออกพร้อมข้อมูลปัจจุบัน กรอกแล้ว Import กลับมา ระบบจะแทนที่ตาราง Industry LR และรายการรถทั้งชุด</p>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <h2>Industry Loss Ratio</h2>
+    <p class="note">ระบบเลือกแถวที่ละเอียดที่สุดก่อน: รุ่น → ยี่ห้อ → ประเภท → ค่ารวม (* = ทั้งหมด)</p>
+    <div class="tablewrap"><table class="edit" id="indTable"></table></div>
+    <div class="toolbar" style="margin-top:8px"><button class="btn" id="addInd">+ เพิ่มแถว</button></div>
+  </div>
+  <div class="card">
+    <h2>รายการรถ</h2>
+    <div class="tablewrap"><table class="edit" id="carTable"></table></div>
+    <div class="toolbar" style="margin-top:8px"><button class="btn" id="addCar">+ เพิ่มรุ่น</button></div>
+  </div>
+</section>
+</main>
 
 <script id="engine">
 // ===== ENGINE START =====
@@ -114,6 +353,408 @@ const Engine = (() => {
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
 // ===== ENGINE END =====
+</script>
+<script id="app">
+// ===== APP =====
+const CATEGORIES = [
+  { id: 'T1D', name: 'ประเภท 1 ซ่อมห้าง' },
+  { id: 'T1G', name: 'ประเภท 1 ซ่อมอู่' },
+  { id: 'T2P', name: 'ประเภท 2+' },
+  { id: 'T3P', name: 'ประเภท 3+' },
+  { id: 'T2', name: 'ประเภท 2' },
+  { id: 'T3', name: 'ประเภท 3' },
+];
+const DEFAULT_DB = {
+  version: 1,
+  cars: [
+    ['Toyota', 'Vios'], ['Toyota', 'Yaris Ativ'], ['Toyota', 'Corolla Cross'], ['Toyota', 'Hilux Revo'],
+    ['Honda', 'City'], ['Honda', 'Civic'], ['Honda', 'HR-V'],
+    ['Isuzu', 'D-Max'], ['Mitsubishi', 'Xpander'], ['BYD', 'Atto 3'],
+  ].map(([brand, model]) => ({ brand, model })),
+  industry: [
+    { category: '*', brand: '*', model: '*', lr: 59.6, source: 'ข่าวอ้างข้อมูล คปภ. ผ่านสมาคมประกันวินาศภัยไทย: Motor ภาคสมัครใจ', period: '9M/2567', note: 'ยังไม่ยืนยันกับรายงานต้นฉบับ คปภ. · ไม่มีข้อมูลแยกประเภทหรือรุ่นรถ' },
+  ],
+};
+const DEFAULT_INPUTS = {
+  category: 'T1G', brand: 'Toyota', model: 'Vios', gross: 18000,
+  lossMode: 'lr', lr: 60, freq: 0.6, sev: 18000,
+  comm: 18, opexVar: 5, opexPerPolicy: 0, opexFixed: 2000000,
+  mktVar: 3, mktPerPolicy: 0, mktFixed: 1000000,
+  growth: 10, retention: 70, targetCR: 95, warnPts: 10, alertPts: 20,
+};
+const PCT_FIELDS = ['lr', 'comm', 'opexVar', 'mktVar', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
+const NUM_FIELDS = ['gross', 'lr', 'freq', 'sev', 'comm', 'opexVar', 'opexPerPolicy', 'opexFixed', 'mktVar', 'mktPerPolicy', 'mktFixed', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
+const SCEN = [
+  { key: 'base', name: 'Base Case', def: 'ปีที่ 1 เท่าทุน (CR = 100%)', color: '--s1' },
+  { key: 'best', name: 'Best Case', def: 'ปีที่ 1 CR ต่ำกว่าเป้า', color: '--s2' },
+  { key: 'worst', name: 'Worst Case', def: 'กำไรสะสมเท่าทุนในปีที่ 3', color: '--s3' },
+];
+const DB_KEY = 'motorsim.db.v1', INP_KEY = 'motorsim.inputs.v1';
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+const clone = (o) => JSON.parse(JSON.stringify(o));
+let db = store.get(DB_KEY) || clone(DEFAULT_DB);
+let inputs = { ...DEFAULT_INPUTS, ...(store.get(INP_KEY) || {}) };
+let activeScen = 'base';
+let lastResult = null;
+
+const fmt = (n, d = 0) => (n == null || !isFinite(n)) ? '–' : n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (r, d = 1) => (r == null || !isFinite(r)) ? '–' : (r * 100).toFixed(d) + '%';
+const mb = (n, d = 2) => fmt(n / 1e6, d);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const catName = (id) => id === '*' ? '* ทุกประเภท' : (CATEGORIES.find((c) => c.id === id)?.name || id);
+
+// ---------- Industry lookup ----------
+function findIndustry(category, brand, model) {
+  const levels = [
+    { m: (r) => r.category === category && r.brand === brand && r.model === model, label: 'ระดับรุ่นรถ' },
+    { m: (r) => r.category === category && r.brand === brand && r.model === '*', label: 'ระดับยี่ห้อ' },
+    { m: (r) => r.category === '*' && r.brand === brand && r.model === model, label: 'ระดับรุ่นรถ (ทุกประเภท)' },
+    { m: (r) => r.category === '*' && r.brand === brand && r.model === '*', label: 'ระดับยี่ห้อ (ทุกประเภท)' },
+    { m: (r) => r.category === category && r.brand === '*' && r.model === '*', label: 'ระดับประเภทประกัน' },
+    { m: (r) => r.category === '*' && r.brand === '*' && r.model === '*', label: 'ค่ารวม Motor สมัครใจ' },
+  ];
+  for (const lv of levels) {
+    const row = db.industry.find((r) => lv.m(r) && isFinite(parseFloat(r.lr)));
+    if (row) return { ...row, level: lv.label, exact: lv === levels[0] };
+  }
+  return null;
+}
+
+// ---------- Form ----------
+function fillSelect(sel, items, value) {
+  sel.innerHTML = items.map((i) => `<option value="${esc(i.value)}">${esc(i.label)}</option>`).join('');
+  if (items.some((i) => i.value === value)) sel.value = value;
+}
+function refreshCarSelects() {
+  const brands = [...new Set(db.cars.map((c) => c.brand))];
+  fillSelect($('brand'), brands.map((b) => ({ value: b, label: b })), inputs.brand);
+  inputs.brand = $('brand').value;
+  const models = db.cars.filter((c) => c.brand === inputs.brand).map((c) => c.model);
+  fillSelect($('model'), models.map((m) => ({ value: m, label: m })), inputs.model);
+  inputs.model = $('model').value;
+}
+function loadForm() {
+  fillSelect($('category'), CATEGORIES.map((c) => ({ value: c.id, label: c.name })), inputs.category);
+  refreshCarSelects();
+  NUM_FIELDS.forEach((f) => { $(f).value = inputs[f]; });
+  document.querySelectorAll('input[name=lossMode]').forEach((r) => { r.checked = r.value === inputs.lossMode; });
+}
+function readForm() {
+  inputs.category = $('category').value;
+  inputs.brand = $('brand').value;
+  inputs.model = $('model').value;
+  NUM_FIELDS.forEach((f) => { const v = parseFloat($(f).value); inputs[f] = isFinite(v) ? v : 0; });
+  inputs.lossMode = document.querySelector('input[name=lossMode]:checked')?.value || 'lr';
+  store.set(INP_KEY, inputs);
+}
+function engineInputs() {
+  const e = {};
+  NUM_FIELDS.forEach((f) => { e[f] = PCT_FIELDS.includes(f) ? inputs[f] / 100 : inputs[f]; });
+  e.lossMode = inputs.lossMode;
+  return e;
+}
+
+// ---------- Render ----------
+function render() {
+  $('lossLR').classList.toggle('hidden', inputs.lossMode !== 'lr');
+  $('lossFS').classList.toggle('hidden', inputs.lossMode !== 'fs');
+  const e = engineInputs();
+  if (!(e.gross > 0)) { $('kpis').innerHTML = '<div class="note">ใส่ราคาเบี้ยมากกว่า 0</div>'; return; }
+  const r = Engine.solve(e);
+  lastResult = r;
+  const ind = findIndustry(inputs.category, inputs.brand, inputs.model);
+  const fixed = r.fixed;
+  const cmPerPolicy = r.premium.net * (1 - r.v);
+
+  $('kpis').innerHTML = [
+    ['เบี้ยสุทธิ/กรมธรรม์', fmt(r.premium.net, 0) + ' บาท', `อากร ${fmt(r.premium.stamp)} · VAT ${fmt(r.premium.vat, 0)}`],
+    ['Loss Ratio', pct(r.lr), `Loss เฉลี่ย ${fmt(r.lossPerPolicy, 0)} บาท/กธ.`],
+    ['ต้นทุนผันแปรรวม', pct(r.v), 'LR + Comm + OPEX + MKT ผันแปร'],
+    ['กำไรส่วนเกิน/กรมธรรม์', fmt(cmPerPolicy, 0) + ' บาท', 'เมื่อรับรู้เบี้ยครบปี'],
+    ['Fixed cost/ปี', mb(fixed) + ' ล้าน', 'OPEX + MKT ส่วนคงที่'],
+  ].map(([k, v, n]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${esc(n)}</div></div>`).join('');
+
+  renderBench(r, ind, e);
+  renderScenarios(r);
+  renderCharts(r);
+  renderTable(r);
+}
+
+function renderBench(r, ind, e) {
+  const el = $('bench');
+  if (!ind) { el.innerHTML = '<div class="bench none"><div class="title">ไม่มีข้อมูล Industry LR</div><div class="src">เพิ่มข้อมูลที่แท็บ "ฐานข้อมูล"</div></div>'; return; }
+  const indLR = parseFloat(ind.lr) / 100;
+  const b = Engine.benchmark(r.lr, indLR, e.warnPts, e.alertPts);
+  const gapPts = (b.gap * 100).toFixed(1);
+  const msg = {
+    ok: ['สมเหตุสมผล', b.gap > 0 ? `LR ที่ใส่ดีกว่าตลาด ${gapPts} pts ยังอยู่ในเกณฑ์` : `LR ที่ใส่สูงกว่าตลาด ${Math.abs(gapPts)} pts (conservative)`],
+    warn: ['ควรทบทวน', `LR ที่ใส่ต่ำกว่าตลาด ${gapPts} pts ต้องมีเหตุผลรองรับ เช่น underwriting หรือช่องทางที่ต่างจากตลาด`],
+    alert: ['ดีเกินจริง', `LR ที่ใส่ต่ำกว่าตลาด ${gapPts} pts เสี่ยงสูงที่ผลจริงจะไม่เป็นตามแผน`],
+  }[b.level];
+  const max = Math.max(1, r.lr, indLR) * 1.1;
+  const pos = (x) => Math.min(100, Math.max(0, (x / max) * 100));
+  const icon = { ok: '✓', warn: '!', alert: '✕' }[b.level];
+  const lrIn = r.lr, close = Math.abs(pos(lrIn) - pos(indLR)) < 14;
+  el.innerHTML = `
+    <div class="bench ${b.level}">
+      <div class="title">${icon} ${msg[0]}</div>
+      <div>${msg[1]}</div>
+      <div class="bar">
+        <div class="mk" style="left:${pos(lrIn)}%"></div>
+        <div class="lbl top" style="left:${pos(lrIn)}%">ที่ใส่ ${pct(lrIn)}</div>
+        <div class="mk ind" style="left:${pos(indLR)}%"></div>
+        <div class="lbl ${close ? 'bot' : 'top'}" style="left:${pos(indLR)}%">Industry ${pct(indLR)}</div>
+      </div>
+      <div class="src">อ้างอิง: ${esc(ind.level)} · ${esc(catName(ind.category))} / ${esc(ind.brand)} / ${esc(ind.model)}<br>แหล่ง: ${esc(ind.source || 'ไม่ระบุ')} · งวด ${esc(ind.period || 'ไม่ระบุ')}${ind.note ? '<br>หมายเหตุ: ' + esc(ind.note) : ''}</div>
+    </div>`;
+}
+
+// ปัด 2 ตำแหน่งแล้วชนเป้าพอดี (เช่น 94.998% -> 95.00%) ให้แสดง 3 ตำแหน่ง จะได้เห็นว่าต่ำกว่าเป้าจริง
+const crY1 = (key, cr) => (key === 'best' && pct(cr, 2) === pct(inputs.targetCR / 100, 2)) ? pct(cr, 3) : pct(cr, 2);
+function renderScenarios(r) {
+  $('scen').innerHTML = SCEN.map((s) => {
+    const x = r[s.key];
+    const def = s.key === 'best' ? `ปีที่ 1 CR < ${inputs.targetCR}%` : s.def;
+    if (!x.feasible) return `<div class="sc na" style="--c:var(${s.color})"><div class="name"><span class="dot"></span>${s.name}</div><div class="def">${def}</div><div class="big">ทำไม่ได้</div><div class="note">${esc(x.reason)}</div></div>`;
+    const y = x.rows;
+    return `<div class="sc" style="--c:var(${s.color})">
+      <div class="name"><span class="dot"></span>${s.name}</div>
+      <div class="def">${def}</div>
+      <div class="big">${fmt(x.new1)} <span style="font-size:13px;font-weight:500">กรมธรรม์</span></div>
+      <div class="line"><span>เบี้ยรวมภาษีปี 1</span><b>${mb(x.new1 * inputs.gross)} ล้าน</b></div>
+      <div class="line"><span>CR ปี 1 / ปี 3</span><b>${crY1(s.key, y[0].cr)} / ${pct(y[2].cr, 2)}</b></div>
+      <div class="line"><span>กำไรสะสม 3 ปี</span><b>${mb(y[2].cum)} ล้าน</b></div>
+      ${x.note ? `<div class="note">${esc(x.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+let chCum, chCR;
+function renderCharts(r) {
+  if (typeof Chart === 'undefined') { ['chCum', 'chCR'].forEach((id) => { $(id).parentElement.innerHTML = '<p class="note">โหลดไลบรารีกราฟไม่ได้ (ต้องต่ออินเทอร์เน็ต) ดูตัวเลขในตารางด้านล่างแทน</p>'; }); return; }
+  const text2 = css('--text-2'), grid = css('--grid'), surface = css('--surface');
+  const live = SCEN.filter((s) => r[s.key].feasible);
+  const legend = live.map((s) => `<span><i class="dot" style="--c:var(${s.color})"></i>${s.name}</span>`).join('');
+  $('lg1').innerHTML = legend; $('lg2').innerHTML = legend;
+  const labels = ['ปี 1', 'ปี 2', 'ปี 3'];
+  const common = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: css('--surface-2'), titleColor: css('--text'), bodyColor: css('--text'), borderColor: css('--border'), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: text2 }, border: { color: grid } },
+      y: { grid: { color: grid }, ticks: { color: text2 }, border: { display: false } },
+    },
+    font: { family: '"IBM Plex Sans Thai", system-ui' },
+  };
+  Chart.defaults.font.family = '"IBM Plex Sans Thai", system-ui, sans-serif';
+  const cumData = {
+    labels,
+    datasets: live.map((s) => ({
+      label: s.name, data: r[s.key].rows.map((y) => +(y.cum / 1e6).toFixed(2)),
+      borderColor: css(s.color), backgroundColor: css(s.color), borderWidth: 2,
+      pointRadius: 4, pointHoverRadius: 6, pointBorderColor: surface, pointBorderWidth: 2, tension: 0,
+    })),
+  };
+  const crData = {
+    labels,
+    datasets: live.map((s) => ({
+      label: s.name, data: r[s.key].rows.map((y) => +(y.cr * 100).toFixed(1)),
+      backgroundColor: css(s.color), borderColor: surface, borderWidth: { left: 1, right: 1 },
+      borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 28,
+    })),
+  };
+  const cumOpts = clone(common);
+  cumOpts.plugins.tooltip.callbacks = { label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y, 2)} ล้านบาท` };
+  const crOpts = clone(common);
+  crOpts.plugins.tooltip.callbacks = { label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y, 1)}%` };
+  crOpts.scales.y.suggestedMin = 70;
+  const refLine = (value, color) => ({
+    id: 'ref' + value,
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea: a, scales: { y } } = chart;
+      const py = y.getPixelForValue(value);
+      if (py < a.top || py > a.bottom) return;
+      ctx.save(); ctx.strokeStyle = color; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke();
+      ctx.fillStyle = text2; ctx.font = '11px "IBM Plex Sans Thai", system-ui'; ctx.textAlign = 'right';
+      ctx.fillText(value === 0 ? 'เท่าทุน' : value + '%', a.right, py - 4); ctx.restore();
+    },
+  });
+  chCum?.destroy(); chCR?.destroy();
+  chCum = new Chart($('chCum'), { type: 'line', data: cumData, options: cumOpts, plugins: [refLine(0, text2)] });
+  chCR = new Chart($('chCR'), { type: 'bar', data: crData, options: crOpts, plugins: [refLine(100, text2)] });
+}
+
+function renderTable(r) {
+  $('scenTabs').innerHTML = SCEN.map((s) => `<button type="button" data-scen="${s.key}" aria-selected="${s.key === activeScen}">${s.name}</button>`).join('');
+  const x = r[activeScen];
+  if (!x.feasible) { $('simTable').innerHTML = `<p class="note">${esc(x.reason)}</p>`; return; }
+  const rows = x.rows;
+  const line = (label, f, cls = '') => `<tr class="${cls}"><td>${label}</td>${rows.map((y) => { const v = f(y); return `<td class="${typeof v === 'number' && v < 0 ? 'neg' : ''}">${typeof v === 'number' ? fmt(v) : v}</td>`; }).join('')}</tr>`;
+  $('simTable').innerHTML = `<table>
+    <thead><tr><th>รายการ</th>${rows.map((y) => `<th>ปี ${y.year}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${line('กรมธรรม์ใหม่', (y) => Math.round(y.newPol))}
+      ${line('กรมธรรม์ต่ออายุ', (y) => Math.round(y.renewPol))}
+      ${line('กรมธรรม์รวม', (y) => Math.round(y.policies), 'sum')}
+      ${line('Written Premium (สุทธิ)', (y) => y.wp)}
+      ${line('Earned Premium', (y) => y.ep, 'sum')}
+      ${line('Loss', (y) => -y.loss)}
+      ${line('Commission', (y) => -y.comm)}
+      ${line('OPEX + MKT ผันแปร', (y) => -(y.varExp - y.comm))}
+      ${line('OPEX + MKT Fixed', (y) => -y.fixed)}
+      ${line('กำไร (ขาดทุน) จากการรับประกัน', (y) => y.profit, 'sum')}
+      ${line('กำไรสะสม', (y) => y.cum)}
+      ${line('Loss Ratio', (y) => pct(y.lr))}
+      ${line('Expense Ratio', (y) => pct(y.er))}
+      ${line('Combined Ratio', (y) => pct(y.cr, 2), 'sum')}
+    </tbody></table>
+    <p class="note">หน่วย: บาท (ยกเว้นจำนวนกรมธรรม์และ %) · ตัวเลขติดลบคือค่าใช้จ่าย</p>`;
+}
+
+// ---------- Database tab ----------
+function showMsg(text, ok = true) { const m = $('dataMsg'); m.textContent = text; m.className = 'msg show ' + (ok ? 'ok' : 'err'); }
+function saveDb() { store.set(DB_KEY, db); refreshCarSelects(); readForm(); render(); }
+function renderDb() {
+  const catOpts = (v) => [{ id: '*', name: '* ทุกประเภท' }, ...CATEGORIES].map((c) => `<option value="${c.id}" ${c.id === v ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+  $('indTable').innerHTML = `<thead><tr><th>ประเภท</th><th>ยี่ห้อ</th><th>รุ่น</th><th>LR %</th><th>แหล่งข้อมูล</th><th>งวด</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>` +
+    db.industry.map((r, i) => `<tr data-i="${i}">
+      <td><select data-f="category">${catOpts(r.category)}</select></td>
+      <td><input data-f="brand" value="${esc(r.brand)}"></td>
+      <td><input data-f="model" value="${esc(r.model)}"></td>
+      <td><input data-f="lr" type="number" step="0.1" value="${esc(r.lr)}" style="width:80px"></td>
+      <td><input data-f="source" value="${esc(r.source)}" style="min-width:220px"></td>
+      <td><input data-f="period" value="${esc(r.period)}" style="width:90px"></td>
+      <td><input data-f="note" value="${esc(r.note)}" style="min-width:200px"></td>
+      <td><button class="btn icon danger" data-del="ind" aria-label="ลบแถว">✕</button></td></tr>`).join('') + '</tbody>';
+  $('carTable').innerHTML = `<thead><tr><th>ยี่ห้อ</th><th>รุ่น</th><th></th></tr></thead><tbody>` +
+    db.cars.map((c, i) => `<tr data-i="${i}"><td><input data-f="brand" value="${esc(c.brand)}"></td><td><input data-f="model" value="${esc(c.model)}"></td><td><button class="btn icon danger" data-del="car" aria-label="ลบแถว">✕</button></td></tr>`).join('') + '</tbody>';
+}
+function bindTable(tableId, listKey) {
+  $(tableId).addEventListener('change', (ev) => {
+    const tr = ev.target.closest('tr[data-i]'); const f = ev.target.dataset.f;
+    if (!tr || !f) return;
+    const v = ev.target.value.trim();
+    db[listKey][+tr.dataset.i][f] = f === 'lr' ? (v === '' ? '' : parseFloat(v)) : v;
+    saveDb();
+  });
+  $(tableId).addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-del]'); if (!b) return;
+    db[listKey].splice(+b.closest('tr').dataset.i, 1); saveDb(); renderDb();
+  });
+}
+
+// Excel template
+const IND_COLS = ['category_id', 'brand', 'model', 'loss_ratio_pct', 'source', 'period', 'note'];
+function exportXlsx() {
+  if (typeof XLSX === 'undefined') return showMsg('โหลดไลบรารี Excel ไม่ได้ (ต้องต่ออินเทอร์เน็ต)', false);
+  const wb = XLSX.utils.book_new();
+  const readme = [
+    ['วิธีใช้ Template'],
+    ['1. แก้ไข/เพิ่มแถวในชีต Industry_LR และ Cars แล้วบันทึก'],
+    ['2. กลับมาที่แท็บ "ฐานข้อมูล" กด Import Excel (ข้อมูลเดิมในสองตารางนี้จะถูกแทนที่ทั้งชุด)'],
+    ['3. ใส่ * ใน category_id / brand / model เพื่อหมายถึงทั้งหมด'],
+    ['4. loss_ratio_pct ใส่เป็นตัวเลขเปอร์เซ็นต์ เช่น 59.6'],
+    ['5. ทุกแถวควรระบุ source และ period เพื่อให้รู้ที่มาของตัวเลข'],
+    [],
+    ['category_id', 'ชื่อประเภท'],
+    ['*', 'ทุกประเภท'],
+    ...CATEGORIES.map((c) => [c.id, c.name]),
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(readme), 'README');
+  const ind = [IND_COLS, ...db.industry.map((r) => [r.category, r.brand, r.model, r.lr, r.source, r.period, r.note])];
+  const ws1 = XLSX.utils.aoa_to_sheet(ind); ws1['!cols'] = [10, 14, 16, 14, 50, 10, 50].map((w) => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Industry_LR');
+  const ws2 = XLSX.utils.aoa_to_sheet([['brand', 'model'], ...db.cars.map((c) => [c.brand, c.model])]);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Cars');
+  XLSX.writeFile(wb, 'motor-sim-template.xlsx');
+  showMsg('ส่งออก motor-sim-template.xlsx แล้ว');
+}
+function parseWorkbook(wb) {
+  const errors = [];
+  const sheet = (n) => wb.Sheets[n] ? XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' }) : null;
+  const indRows = sheet('Industry_LR'), carRows = sheet('Cars');
+  if (!indRows) errors.push('ไม่พบชีต Industry_LR');
+  if (!carRows) errors.push('ไม่พบชีต Cars');
+  if (errors.length) return { errors };
+  const validCats = new Set(['*', ...CATEGORIES.map((c) => c.id)]);
+  const industry = [];
+  indRows.forEach((r, i) => {
+    const line = i + 2;
+    const cat = String(r.category_id).trim(), lr = parseFloat(r.loss_ratio_pct);
+    if (!cat && r.loss_ratio_pct === '') return;
+    if (!validCats.has(cat)) errors.push(`Industry_LR แถว ${line}: category_id "${cat}" ไม่ถูกต้อง`);
+    if (!isFinite(lr) || lr < 0 || lr > 300) errors.push(`Industry_LR แถว ${line}: loss_ratio_pct ต้องเป็นตัวเลข 0–300`);
+    industry.push({ category: cat, brand: String(r.brand).trim() || '*', model: String(r.model).trim() || '*', lr, source: String(r.source).trim(), period: String(r.period).trim(), note: String(r.note).trim() });
+  });
+  const cars = carRows.map((r) => ({ brand: String(r.brand).trim(), model: String(r.model).trim() })).filter((c) => c.brand && c.model);
+  if (!cars.length) errors.push('ชีต Cars ต้องมีอย่างน้อย 1 รุ่น');
+  if (!industry.length) errors.push('ชีต Industry_LR ต้องมีอย่างน้อย 1 แถว');
+  return { errors, industry, cars };
+}
+async function importXlsx(file) {
+  if (typeof XLSX === 'undefined') return showMsg('โหลดไลบรารี Excel ไม่ได้ (ต้องต่ออินเทอร์เน็ต)', false);
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const p = parseWorkbook(wb);
+    if (p.errors.length) return showMsg('Import ไม่สำเร็จ: ' + p.errors.slice(0, 5).join(' · '), false);
+    db.industry = p.industry; db.cars = p.cars; saveDb(); renderDb();
+    showMsg(`Import สำเร็จ: Industry LR ${p.industry.length} แถว · รถ ${p.cars.length} รุ่น`);
+  } catch (err) { showMsg('อ่านไฟล์ไม่ได้: ' + err.message, false); }
+}
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function importJson(file) {
+  try {
+    const d = JSON.parse(await file.text());
+    if (!Array.isArray(d.industry) || !Array.isArray(d.cars)) throw new Error('โครงสร้างไฟล์ไม่ถูกต้อง');
+    db = { version: 1, industry: d.industry, cars: d.cars };
+    if (d.inputs) { inputs = { ...DEFAULT_INPUTS, ...d.inputs }; loadForm(); }
+    saveDb(); renderDb(); showMsg(`Import JSON สำเร็จ: Industry LR ${db.industry.length} แถว · รถ ${db.cars.length} รุ่น`);
+  } catch (err) { showMsg('Import JSON ไม่สำเร็จ: ' + err.message, false); }
+}
+
+// ---------- Wiring ----------
+function init() {
+  loadForm();
+  $('form').addEventListener('input', (ev) => {
+    if (ev.target.id === 'brand') { inputs.brand = ev.target.value; refreshCarSelects(); }
+    readForm(); render();
+  });
+  $('form').addEventListener('change', () => { readForm(); render(); });
+  $('resetInputs').addEventListener('click', () => { inputs = { ...DEFAULT_INPUTS }; store.del(INP_KEY); refreshCarSelects(); loadForm(); readForm(); render(); });
+  $('scenTabs').addEventListener('click', (ev) => { const b = ev.target.closest('[data-scen]'); if (!b) return; activeScen = b.dataset.scen; renderTable(lastResult); });
+  document.querySelectorAll('header nav.tabs button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('header nav.tabs button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    $('tab-sim').classList.toggle('hidden', b.dataset.tab !== 'sim');
+    $('tab-data').classList.toggle('hidden', b.dataset.tab !== 'data');
+    if (b.dataset.tab === 'data') renderDb();
+  }));
+  bindTable('indTable', 'industry'); bindTable('carTable', 'cars');
+  $('addInd').addEventListener('click', () => { db.industry.push({ category: inputs.category, brand: inputs.brand, model: '*', lr: '', source: '', period: '', note: '' }); saveDb(); renderDb(); });
+  $('addCar').addEventListener('click', () => { db.cars.push({ brand: 'ยี่ห้อใหม่', model: 'รุ่นใหม่' }); saveDb(); renderDb(); });
+  $('exportXlsx').addEventListener('click', exportXlsx);
+  $('importXlsxBtn').addEventListener('click', () => $('importXlsx').click());
+  $('importXlsx').addEventListener('change', (ev) => { const f = ev.target.files[0]; if (f) importXlsx(f); ev.target.value = ''; });
+  $('exportJson').addEventListener('click', () => { download('motor-sim-backup.json', JSON.stringify({ ...db, inputs }, null, 2), 'application/json'); showMsg('ส่งออก motor-sim-backup.json แล้ว'); });
+  $('importJsonBtn').addEventListener('click', () => $('importJson').click());
+  $('importJson').addEventListener('change', (ev) => { const f = ev.target.files[0]; if (f) importJson(f); ev.target.value = ''; });
+  $('resetDb').addEventListener('click', () => { if (!confirm('คืนค่าฐานข้อมูลเป็นค่าเริ่มต้น? ข้อมูลที่แก้ไว้จะหายทั้งหมด')) return; db = clone(DEFAULT_DB); saveDb(); renderDb(); showMsg('คืนค่าเริ่มต้นแล้ว'); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => lastResult && renderCharts(lastResult));
+  render();
+}
+init();
+// ===== APP END =====
 </script>
 </body>
 </html>
