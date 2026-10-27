@@ -390,10 +390,11 @@ const DEFAULT_INPUTS = {
 };
 const PCT_FIELDS = ['lr', 'comm', 'opexVar', 'mktVar', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
 const NUM_FIELDS = ['gross', 'lr', 'freq', 'sev', 'comm', 'opexVar', 'opexPerPolicy', 'opexFixed', 'mktVar', 'mktPerPolicy', 'mktFixed', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
+// ลำดับแสดงผล Worst > Base > Best สีผูกกับ scenario ไม่ผูกกับตำแหน่ง
 const SCEN = [
+  { key: 'worst', name: 'Worst Case', def: 'กำไรสะสมเท่าทุนในปีที่ 3', color: '--s3' },
   { key: 'base', name: 'Base Case', def: 'ปีที่ 1 เท่าทุน (CR = 100%)', color: '--s1' },
   { key: 'best', name: 'Best Case', def: 'ปีที่ 1 CR ต่ำกว่าเป้า', color: '--s2' },
-  { key: 'worst', name: 'Worst Case', def: 'กำไรสะสมเท่าทุนในปีที่ 3', color: '--s3' },
 ];
 const DB_KEY = 'motorsim.db.v1', INP_KEY = 'motorsim.inputs.v1';
 
