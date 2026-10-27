@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor Package Simulator</title>
+</head>
+<body>
+<p>UI อยู่ระหว่างพัฒนา (ขั้นที่ 3)</p>
+
+<script id="engine">
+// ===== ENGINE START =====
+// ทุก % เก็บเป็นทศนิยม (0.60 = 60%) ทุกยอดเงินเป็นบาท
+const Engine = (() => {
+  const STAMP_RATE = 0.004; // อากรแสตมป์ 0.4% ของเบี้ยสุทธิ ปัดเศษขึ้นเป็นบาท
+  const VAT_RATE = 0.07;    // VAT 7% คิดบน (เบี้ยสุทธิ + อากร)
+  const YEARS = 3;
+
+  // ถอดเบี้ยรวมภาษีอากร -> เบี้ยสุทธิ
+  function netFromGross(gross) {
+    const beforeVat = gross / (1 + VAT_RATE);
+    let net = beforeVat / (1 + STAMP_RATE);
+    for (let i = 0; i < 5; i++) net = beforeVat - Math.ceil(net * STAMP_RATE);
+    const stamp = Math.ceil(net * STAMP_RATE);
+    return { gross, net, stamp, vat: gross - beforeVat };
+  }
+
+  // Loss Ratio จากโหมดที่เลือก
+  function lossRatio(inp, net) {
+    if (inp.lossMode === 'fs') return (inp.freq * inp.sev) / net;
+    return inp.lr;
+  }
+
+  // ต้นทุนผันแปรรวมเป็นสัดส่วนของเบี้ย (LR + Comm + OPEX var + MKT var + ต้นทุนต่อกรมธรรม์)
+  function variableRatio(inp, net, lr) {
+    const perPolicy = (inp.opexPerPolicy || 0) + (inp.mktPerPolicy || 0);
+    return lr + inp.comm + inp.opexVar + inp.mktVar + perPolicy / net;
+  }
+
+  // จำลอง 3 ปีจากยอดขายกรมธรรม์ใหม่ปี 1 (ไม่ปัดเศษ)
+  function simulate(inp, new1) {
+    const { net } = netFromGross(inp.gross);
+    const lr = lossRatio(inp, net);
+    const varExpRatio = variableRatio(inp, net, lr) - lr;
+    const fixed = inp.opexFixed + inp.mktFixed;
+    const rows = [];
+    let prevPolicies = 0, prevWP = 0, cum = 0;
+    for (let y = 1; y <= YEARS; y++) {
+      const newPol = new1 * Math.pow(1 + inp.growth, y - 1);
+      const renewPol = prevPolicies * inp.retention;
+      const policies = newPol + renewPol;
+      const wp = policies * net;
+      const ep = 0.5 * prevWP + 0.5 * wp; // ขายเฉลี่ยทั้งปี: รับรู้ 50% ในปีที่ขาย อีก 50% ปีถัดไป
+      const loss = lr * ep;
+      const varExp = varExpRatio * ep;
+      const expense = varExp + fixed;
+      const profit = ep - loss - expense;
+      cum += profit;
+      rows.push({
+        year: y, newPol, renewPol, policies, wp, ep, loss,
+        comm: inp.comm * ep, varExp, fixed, expense,
+        lr: ep ? loss / ep : NaN,
+        er: ep ? expense / ep : NaN,
+        cr: ep ? (loss + expense) / ep : NaN,
+        profit, cum,
+      });
+      prevPolicies = policies; prevWP = wp;
+    }
+    return rows;
+  }
+
+  // หา New_1 แบบ closed-form: profit_y = (1 - v) * EP_y - F และ EP_y เป็นเส้นตรงตาม New_1
+  function solve(inp) {
+    const g = netFromGross(inp.gross);
+    const lr = lossRatio(inp, g.net);
+    const v = variableRatio(inp, g.net, lr);
+    const F = inp.opexFixed + inp.mktFixed;
+    const unit = simulate(inp, 1);
+    const ep1 = unit[0].ep;
+    const epSum = unit.reduce((s, r) => s + r.ep, 0);
+
+    // CR ปี 1 = v + F / EP_1  ->  EP_1 = F / (crTarget - v)
+    const forCR = (crTarget) => {
+      if (crTarget <= v) return { feasible: false, reason: `ต้นทุนผันแปร ${(v * 100).toFixed(1)}% เกิน CR เป้า ${(crTarget * 100).toFixed(1)}% ขายเท่าไรก็ไม่ถึง` };
+      if (F === 0) return { feasible: true, new1: 0, note: 'ไม่มี Fixed cost: CR เท่ากันทุกยอดขาย' };
+      const new1 = Math.ceil(F / (crTarget - v) / ep1 - 1e-9);
+      return { feasible: true, new1, ep: F / (crTarget - v) };
+    };
+
+    const base = forCR(1.0);
+    const best = forCR(inp.targetCR);
+    let worst;
+    if (v >= 1) worst = { feasible: false, reason: `ต้นทุนผันแปร ${(v * 100).toFixed(1)}% เกิน 100% ขาดทุนทุกยอดขาย` };
+    else if (F === 0) worst = { feasible: true, new1: 0, note: 'ไม่มี Fixed cost' };
+    else worst = { feasible: true, new1: Math.ceil((YEARS * F) / ((1 - v) * epSum) - 1e-9) };
+
+    const scenario = (s) => s.feasible ? { ...s, rows: simulate(inp, s.new1) } : s;
+    return {
+      premium: g, lr, v, fixed: F,
+      lossPerPolicy: lr * g.net,
+      base: scenario(base), best: scenario(best), worst: scenario(worst),
+    };
+  }
+
+  // เทียบ LR ที่กรอกกับ Industry: gap = Industry - ที่กรอก (บวก = กรอกดีกว่าตลาด)
+  function benchmark(lr, industryLR, warnPts = 0.10, alertPts = 0.20) {
+    if (industryLR == null || isNaN(industryLR)) return { level: 'none', gap: null };
+    const gap = industryLR - lr;
+    const level = gap > alertPts ? 'alert' : gap > warnPts ? 'warn' : 'ok';
+    return { level, gap };
+  }
+
+  return { netFromGross, lossRatio, variableRatio, simulate, solve, benchmark, STAMP_RATE, VAT_RATE, YEARS };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+// ===== ENGINE END =====
+</script>
+</body>
+</html>
