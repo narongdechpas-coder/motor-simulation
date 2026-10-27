@@ -14,7 +14,7 @@
   --bg: #f4f3ef; --surface: #fcfcfb; --surface-2: #f0efea; --border: #dddbd3;
   --text: #0b0b0b; --text-2: #52514e; --muted: #7a7974;
   --accent: #2a78d6; --accent-ink: #ffffff;
-  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --sc-worst: #ee8236; --sc-base: #7a7974; --sc-best: #166b30;
   --ok: #1f7a3a; --ok-bg: #e5f3e8; --warn: #8a5a00; --warn-bg: #fdf1d6; --bad: #b42318; --bad-bg: #fde6e4;
   --grid: #e6e4dd;
 }
@@ -24,7 +24,7 @@
     --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #34332f;
     --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
     --accent: #3987e5; --accent-ink: #ffffff;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --sc-worst: #f0a050; --sc-base: #8f8e86; --sc-best: #2a8a40;
     --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
     --grid: #2b2a27;
   }
@@ -34,7 +34,7 @@
   --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #34332f;
   --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
   --accent: #3987e5; --accent-ink: #ffffff;
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --sc-worst: #f0a050; --sc-base: #8f8e86; --sc-best: #2a8a40;
   --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
   --grid: #2b2a27;
 }
@@ -390,11 +390,11 @@ const DEFAULT_INPUTS = {
 };
 const PCT_FIELDS = ['lr', 'comm', 'opexVar', 'mktVar', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
 const NUM_FIELDS = ['gross', 'lr', 'freq', 'sev', 'comm', 'opexVar', 'opexPerPolicy', 'opexFixed', 'mktVar', 'mktPerPolicy', 'mktFixed', 'growth', 'retention', 'targetCR', 'warnPts', 'alertPts'];
-// ลำดับแสดงผล Worst > Base > Best สีผูกกับ scenario ไม่ผูกกับตำแหน่ง
+// ลำดับแสดงผล Worst > Base > Best · สี Worst ส้ม / Base เทา / Best เขียว (ส้มสว่างคู่เขียวเข้ม ให้คนตาบอดสีแดง-เขียวยังแยกได้)
 const SCEN = [
-  { key: 'worst', name: 'Worst Case', def: 'กำไรสะสมเท่าทุนในปีที่ 3', color: '--s3' },
-  { key: 'base', name: 'Base Case', def: 'ปีที่ 1 เท่าทุน (CR = 100%)', color: '--s1' },
-  { key: 'best', name: 'Best Case', def: 'ปีที่ 1 CR ต่ำกว่าเป้า', color: '--s2' },
+  { key: 'worst', name: 'Worst Case', def: 'กำไรสะสมเท่าทุนในปีที่ 3', color: '--sc-worst' },
+  { key: 'base', name: 'Base Case', def: 'ปีที่ 1 เท่าทุน (CR = 100%)', color: '--sc-base' },
+  { key: 'best', name: 'Best Case', def: 'ปีที่ 1 CR ต่ำกว่าเป้า', color: '--sc-best' },
 ];
 const DB_KEY = 'motorsim.db.v1', INP_KEY = 'motorsim.inputs.v1';
 
