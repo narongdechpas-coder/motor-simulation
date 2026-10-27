@@ -15,7 +15,7 @@
   --text: #0b0b0b; --text-2: #52514e; --muted: #7a7974;
   --accent: #2a78d6; --accent-ink: #ffffff;
   --sc-worst: #ee8236; --sc-base: #7a7974; --sc-best: #166b30;
-  --ok: #1f7a3a; --ok-bg: #e5f3e8; --warn: #8a5a00; --warn-bg: #fdf1d6; --bad: #b42318; --bad-bg: #fde6e4;
+  --ok: #146c2e; --ok-bg: #d3ebda; --warn: #7a4d00; --warn-bg: #fae3b0; --bad: #a11b12; --bad-bg: #f9d2ce;
   --grid: #e6e4dd;
 }
 @media (prefers-color-scheme: dark) {
@@ -25,7 +25,7 @@
     --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
     --accent: #3987e5; --accent-ink: #ffffff;
     --sc-worst: #f0a050; --sc-base: #8f8e86; --sc-best: #2a8a40;
-    --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
+    --ok: #7fdc99; --ok-bg: #1d3d27; --warn: #f5c96a; --warn-bg: #45340c; --bad: #ff9a90; --bad-bg: #4a1c18;
     --grid: #2b2a27;
   }
 }
@@ -35,7 +35,7 @@
   --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86;
   --accent: #3987e5; --accent-ink: #ffffff;
   --sc-worst: #f0a050; --sc-base: #8f8e86; --sc-best: #2a8a40;
-  --ok: #6fcf8a; --ok-bg: #18301f; --warn: #f0c060; --warn-bg: #352a10; --bad: #ff8a80; --bad-bg: #3a1714;
+  --ok: #7fdc99; --ok-bg: #1d3d27; --warn: #f5c96a; --warn-bg: #45340c; --bad: #ff9a90; --bad-bg: #4a1c18;
   --grid: #2b2a27;
 }
 * { box-sizing: border-box; }
@@ -193,6 +193,9 @@ td.neg { color: var(--bad); }
       <div class="card">
         <div class="kpis" id="kpis"></div>
       </div>
+      <div class="card compact">
+        <div id="bench"></div>
+      </div>
       <div class="card">
         <h2>ต้องขายกรมธรรม์ใหม่ปีแรกเท่าไร</h2>
         <div class="scen" id="scen"></div>
@@ -216,9 +219,6 @@ td.neg { color: var(--bad); }
           <div class="legend" id="lg2"></div>
           <div class="chartbox"><canvas id="chCR" aria-label="กราฟ Combined Ratio รายปี แยกตาม scenario" role="img"></canvas></div>
         </div>
-      </div>
-      <div class="card compact">
-        <div id="bench"></div>
       </div>
     </div>
   </div>
