@@ -258,11 +258,11 @@ th, td { padding: 4px 8px; }
         <div class="scen" id="scen"></div>
         <p class="note" style="margin:8px 0 0">คิดบน Earned Premium: ขายเฉลี่ยทั้งปี ปีที่ขายรับรู้เบี้ย 50% ปีถัดไปอีก 50% · ยอดขายใหม่โตตาม Growth และต่ออายุตาม Retention · Gross ก่อน Reinsurance</p>
       </div>
-      <details class="card acc big" open>
+      <details class="card acc big" id="accTable" open>
         <summary><span class="t">ตารางจำลอง 3 ปี</span><nav class="tabs" id="scenTabs" onclick="event.preventDefault()"></nav></summary>
         <div class="tablewrap" id="simTable"></div>
       </details>
-      <details class="card acc big">
+      <details class="card acc big" id="accCharts">
         <summary><span class="t">กราฟกำไรสะสม และ Combined Ratio</span><span class="sv">กดเพื่อเปิด</span></summary>
       <div class="charts">
         <div class="card">
@@ -560,6 +560,7 @@ function render() {
   renderScenarios(r);
   renderCharts(r);
   renderTable(r);
+  fitCharts();
 }
 
 function renderBench(r, ind, e) {
@@ -616,6 +617,20 @@ function renderScenarios(r) {
 }
 
 let chCum, chCR;
+// ตารางพับ + กราฟเปิด บนจอกว้าง: ยืด/หดกราฟให้ทั้งหน้าพอดีความสูงจอ (180–480px) กรณีอื่นใช้ 220px
+const CHART_H = 220, CHART_MIN = 180, CHART_MAX = 480;
+function fitCharts() {
+  const boxes = [...document.querySelectorAll('#accCharts .chartbox')];
+  if (!boxes.length) return;
+  const setH = (h) => { boxes.forEach((b) => { b.style.height = h + 'px'; }); chCum?.resize(); chCR?.resize(); };
+  const fit = $('accCharts').open && !$('accTable').open && innerWidth > 900 && !$('tab-sim').classList.contains('hidden');
+  if (!fit) { setH(CHART_H); return; }
+  const cur = boxes[0].getBoundingClientRect().height;
+  const stack = document.querySelector('#tab-sim .stack');
+  const padBottom = parseFloat(getComputedStyle(document.querySelector('main')).paddingBottom) || 0;
+  const extra = stack.getBoundingClientRect().bottom + scrollY + padBottom - innerHeight; // วัดจากขอบล่างเนื้อหา เพราะ scrollHeight ไม่ต่ำกว่าความสูงจอ
+  setH(Math.floor(Math.min(CHART_MAX, Math.max(CHART_MIN, cur - extra - 1)))); // ปัดลงและเผื่อ 1px กันเศษ pixel ทำให้เกิด scroll
+}
 function renderCharts(r) {
   if (typeof Chart === 'undefined') { ['chCum', 'chCR'].forEach((id) => { const c = $(id); if (c) c.parentElement.innerHTML = '<p class="note">โหลดไลบรารีกราฟไม่ได้ (ต้องต่ออินเทอร์เน็ต) ดูตัวเลขในตารางแทน</p>'; }); return; }
   const text2 = css('--text-2'), grid = css('--grid'), surface = css('--surface');
@@ -832,7 +847,8 @@ function init() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => lastResult && renderCharts(lastResult));
   $('hideForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.add('collapsed'); $('showForm').style.display = ''; render(); });
   $('showForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.remove('collapsed'); $('showForm').style.display = 'none'; render(); });
-  document.querySelectorAll('details.acc.big').forEach((d) => d.addEventListener('toggle', () => d.open && lastResult && renderCharts(lastResult)));
+  document.querySelectorAll('details.acc.big').forEach((d) => d.addEventListener('toggle', () => { if (d.open && lastResult) renderCharts(lastResult); fitCharts(); }));
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(fitCharts, 100); });
   render();
 }
 init();
