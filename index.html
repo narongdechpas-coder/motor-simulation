@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Motor Package Simulator</title>
+<script>try { const t = JSON.parse(localStorage.getItem('motorsim.theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
@@ -45,9 +46,9 @@ h1 { font-size: 22px; margin: 0; }
 h2 { font-size: 16px; margin: 0 0 12px; }
 h3 { font-size: 14px; margin: 16px 0 8px; color: var(--text-2); }
 .sub { color: var(--text-2); font-size: 13px; margin: 2px 0 0; }
-nav.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; }
-nav.tabs button { border: 0; background: transparent; color: var(--text-2); padding: 6px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
-nav.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+nav.tabs, .theme-sw { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 10px; }
+nav.tabs button, .theme-sw button { border: 0; background: transparent; color: var(--text-2); padding: 6px 14px; border-radius: 8px; font: inherit; cursor: pointer; }
+nav.tabs button[aria-selected="true"], .theme-sw button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; }
 .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
@@ -166,6 +167,9 @@ input, select { padding: 4px 7px; }
 .sc .big { font-size: 21px; }
 .sc .def { margin-bottom: 4px; }
 th, td { padding: 4px 8px; }
+.theme-sw button { padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px; }
+header .inline { flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) { .theme-sw .lb { display: none; } }
 </style>
 </head>
 <body>
@@ -178,7 +182,12 @@ th, td { padding: 4px 8px; }
   <nav class="tabs" role="tablist">
     <button role="tab" aria-selected="true" data-tab="sim">จำลอง</button>
     <button role="tab" aria-selected="false" data-tab="data">ฐานข้อมูล</button>
-  </nav></div>
+  </nav>
+  <div class="theme-sw" id="themeSw" role="group" aria-label="ธีมสี">
+    <button type="button" data-theme-opt="auto" title="ตามการตั้งค่าเครื่อง"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor" stroke="none"/></svg><span class="lb">อัตโนมัติ</span></button>
+    <button type="button" data-theme-opt="light" title="สว่าง"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3" stroke-linecap="round"/></svg><span class="lb">สว่าง</span></button>
+    <button type="button" data-theme-opt="dark" title="มืด"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z" stroke-linejoin="round"/></svg><span class="lb">มืด</span></button>
+  </div></div>
 </header>
 <main>
 <section id="tab-sim">
@@ -453,7 +462,7 @@ const SCEN = [
   { key: 'base', name: 'Base Case', def: 'ปีที่ 1 เท่าทุน (CR = 100%)', color: '--sc-base' },
   { key: 'best', name: 'Best Case', def: 'ปีที่ 1 CR ต่ำกว่าเป้า', color: '--sc-best' },
 ];
-const DB_KEY = 'motorsim.db.v1', INP_KEY = 'motorsim.inputs.v1';
+const DB_KEY = 'motorsim.db.v1', INP_KEY = 'motorsim.inputs.v1', THEME_KEY = 'motorsim.theme';
 
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -818,6 +827,16 @@ async function importJson(file) {
   } catch (err) { showMsg('Import JSON ไม่สำเร็จ: ' + err.message, false); }
 }
 
+// ---------- Theme ----------
+// auto = ตาม OS (ไม่มี data-theme) / light, dark = บังคับธีม
+function applyTheme(mode, save) {
+  if (mode === 'light' || mode === 'dark') document.documentElement.dataset.theme = mode;
+  else { mode = 'auto'; delete document.documentElement.dataset.theme; }
+  document.querySelectorAll('#themeSw [data-theme-opt]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.themeOpt === mode));
+  if (save) { if (mode === 'auto') store.del(THEME_KEY); else store.set(THEME_KEY, mode); }
+  if (lastResult) renderCharts(lastResult);
+}
+
 // ---------- Wiring ----------
 function init() {
   loadForm();
@@ -844,7 +863,9 @@ function init() {
   $('importJsonBtn').addEventListener('click', () => $('importJson').click());
   $('importJson').addEventListener('change', (ev) => { const f = ev.target.files[0]; if (f) importJson(f); ev.target.value = ''; });
   $('resetDb').addEventListener('click', () => { if (!confirm('คืนค่าฐานข้อมูลเป็นค่าเริ่มต้น? ข้อมูลที่แก้ไว้จะหายทั้งหมด')) return; db = clone(DEFAULT_DB); saveDb(); renderDb(); showMsg('คืนค่าเริ่มต้นแล้ว'); });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => lastResult && renderCharts(lastResult));
+  applyTheme(store.get(THEME_KEY) || 'auto', false);
+  $('themeSw').addEventListener('click', (ev) => { const b = ev.target.closest('[data-theme-opt]'); if (b) applyTheme(b.dataset.themeOpt, true); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => !document.documentElement.dataset.theme && lastResult && renderCharts(lastResult));
   $('hideForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.add('collapsed'); $('showForm').style.display = ''; render(); });
   $('showForm').addEventListener('click', () => { document.querySelector('#tab-sim .layout').classList.remove('collapsed'); $('showForm').style.display = 'none'; render(); });
   document.querySelectorAll('details.acc.big').forEach((d) => d.addEventListener('toggle', () => { if (d.open && lastResult) renderCharts(lastResult); fitCharts(); }));
